@@ -1,0 +1,143 @@
+import pandas as pd
+class TableManager:
+    def __init__(self, attributes=None, data=None):
+        self.table = pd.DataFrame(data, columns=attributes)
+    def load_table_csv(self, file_path):
+        try:
+            self.table = pd.read_csv(file_path)
+        except Exception as e:
+            print(f"ошибка при загрузке таблицы из CSV: {str(e)}")
+    def save_table_csv(self, file_path):
+        try:
+            self.table.to_csv(file_path, index=False)
+        except Exception as e:
+            print(f"ошибка при сохранении таблицы в CSV: {str(e)}")
+    def load_table_pickle(self, file_path):
+        try:
+            self.table = pd.read_pickle(file_path)
+        except Exception as e:
+            print(f"ошибка при загрузке таблицы из Pickle: {str(e)}")
+    def save_table_pickle(self, file_path):
+        try:
+            self.table.to_pickle(file_path)
+        except Exception as e:
+            print(f"ошибка при сохранении таблицы в Pickle: {str(e)}")
+    def save_table_text(self, file_path):
+        try:
+            with open(file_path, 'w') as file:
+                file.write(str(self.table))
+        except Exception as e:
+            print(f"ошибка при сохранении таблицы в текстовый файл: {str(e)}")
+    def get_rows_by_number(self, start, stop=None, copy_table=False):
+        try:
+            if stop is None:
+                result_table = self.table.iloc[start:start + 1, :]
+            else:
+                result_table = self.table.iloc[start:stop + 1, :]
+            if copy_table:
+                return result_table.copy()
+            else:
+                return result_table
+        except Exception as e:
+            print(f"ошибка при получении строк по номеру: {str(e)}")
+    def get_rows_by_index(self, *values, copy_table=False):
+        try:
+            result_table = self.table[self.table.iloc[:, 0].isin(values)]
+            if copy_table:
+                return result_table.copy()
+            else:
+                return result_table
+        except Exception as e:
+            print(f"ошибка при получении строк по индексу: {str(e)}")
+    def get_column_types(self, by_number=True):
+        try:
+            if by_number:
+                columns = self.table.columns
+            else:
+                columns = list(map(str, range(len(self.table.columns))))
+            result_types = {col: self._get_column_type(self.table[col]) for col in columns}
+            return result_types
+        except Exception as e:
+            print(f"ошибка при получении типов столбцов: {str(e)}")
+    def set_column_types(self, types_dict, by_number=True):
+        try:
+            if by_number:
+                columns = self.table.columns
+            else:
+                columns = list(map(str, range(len(self.table.columns))))
+            for col, expected_type in types_dict.items():
+                actual_type = self._get_column_type(self.table[col])
+                if actual_type != expected_type:
+                    raise ValueError(f"неверный тип для столбца {col}")
+            return types_dict
+        except Exception as e:
+            print(f"ошибка при установке типов столбцов: {str(e)}")
+    def get_values(self, column=0):
+        try:
+            return list(self.table.iloc[:, int(column)])
+        except Exception as e:
+            print(f"ошибка при получении значений столбца: {str(e)}")
+    def get_value(self, column=0):
+        try:
+            return self.table.iloc[0, int(column)]
+        except Exception as e:
+            print(f"ошибка при получении значения: {str(e)}")
+    def set_values(self, values, column=0):
+        try:
+            self.table.iloc[:, int(column)] = values
+        except Exception as e:
+            print(f"ошибка при установке значений столбца: {str(e)}")
+    def set_value(self, value, column=0):
+        try:
+            self.table.iloc[0, int(column)] = value
+        except Exception as e:
+            print(f"ошибка при установке значения: {str(e)}")
+    def print_table(self):
+        print(self.table)
+# создаем экземпляр класса
+table_manager = TableManager(attributes=["Name", "Age", "City"], data=[["Alice", 25, "New York"], ["Bob", 30, "Los Angeles"]])
+# сохранение таблицы в CSV
+table_manager.save_table_csv("example.csv")
+# сохранение таблицы в pickle
+table_manager.save_table_pickle("example.pkl")
+# сохранение таблицы в текстовый файл
+table_manager.save_table_text("example.txt")
+# загрузка таблицы из CSV
+print("\nImport from CSV:")
+table_manager.load_table_csv("example.csv")
+table_manager.print_table()
+# загрузка таблицы из pickle
+print("\nImport from pickle:")
+table_manager.load_table_pickle("example.pkl")
+table_manager.print_table()
+# получение строк по номеру
+rows_by_number = table_manager.get_rows_by_number(0, 0)
+print("\nRows by number:")
+print(rows_by_number)
+# получение строк по значениям в первом столбце
+rows_by_index = table_manager.get_rows_by_index("Bob")
+print("\nRows by index:")
+print(rows_by_index)
+# получение типов столбцов
+column_types = table_manager.get_column_types()
+print("\nColumn types:")
+print(column_types)
+# установка типов столбцов
+types_dict = {"Name": "string", "Age": "integer", "City": "string"}
+table_manager.set_column_types(types_dict)
+# получение значений столбца
+col = 1
+values = table_manager.get_values(column=col)
+print(f"\nValues of {col} column:")
+print(values)
+# получение значения из первой строки и столбца
+value = table_manager.get_value(column=1)
+print(f"\nValue of {col} column in the first row:")
+print(value)
+# установка значений столбца
+table_manager.set_values([28, 36], column=1)
+# установка значения в первой строке и столбце
+table_manager.set_value(value=22, column=1)
+# вывод таблицы
+print("\nPrint table:")
+table_manager.print_table()
