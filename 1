@@ -40,7 +40,7 @@ def load_table(file):
     try:
         # открываем файл для обработки
         with open(file) as f:
-            # получаем данне в виде словаря разделитель ;
+            # получаем данные в виде словаря разделитель ;
             reader = csv.DictReader(f, delimiter=';')
             # получаем название полей
             list_key = reader.fieldnames
