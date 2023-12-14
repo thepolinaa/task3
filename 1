@@ -1,143 +1,259 @@
-import pandas as pd
-class TableManager:
-    def __init__(self, attributes=None, data=None):
-        self.table = pd.DataFrame(data, columns=attributes)
-    def load_table_csv(self, file_path):
+# bvgjhn ,b,kbjntr
+import csv
+import pickle
+
+data = []
+data_pkl = []
+# файл в котором будем хранить преобразованый тип из словаря
+data_set = 'temp.pkl'
+
+def recognize_type(value):
+    """
+    Распознование простейших типов данных.
+    """
+    # Список типов которые будем распозновать
+    list_type = [int, str, bool]
+    # Перебираем список типов для проверки
+    for _type in list_type:
+        # начало области обработки иссключения
         try:
-            self.table = pd.read_csv(file_path)
-        except Exception as e:
-            print(f"ошибка при загрузке таблицы из CSV: {str(e)}")
-    def save_table_csv(self, file_path):
-        try:
-            self.table.to_csv(file_path, index=False)
-        except Exception as e:
-            print(f"ошибка при сохранении таблицы в CSV: {str(e)}")
-    def load_table_pickle(self, file_path):
-        try:
-            self.table = pd.read_pickle(file_path)
-        except Exception as e:
-            print(f"ошибка при загрузке таблицы из Pickle: {str(e)}")
-    def save_table_pickle(self, file_path):
-        try:
-            self.table.to_pickle(file_path)
-        except Exception as e:
-            print(f"ошибка при сохранении таблицы в Pickle: {str(e)}")
-    def save_table_text(self, file_path):
-        try:
-            with open(file_path, 'w') as file:
-                file.write(str(self.table))
-        except Exception as e:
-            print(f"ошибка при сохранении таблицы в текстовый файл: {str(e)}")
-    def get_rows_by_number(self, start, stop=None, copy_table=False):
-        try:
-            if stop is None:
-                result_table = self.table.iloc[start:start + 1, :]
+            # пробуем преобразовать значение value к типу из списка тип в перемонной _type
+            rez = _type(value)
+        # если возникает иссключительная ситуация то ниже она будет обрабатываться
+        except ValueError:
+            # если ошибка то берем следуюший тип
+            continue
+        # не было иссключительной ситуации преобразование удачное
+        else:
+            # возвращаем преобразованный значение и его тип
+            return rez, _type
+
+def load_table(file):
+    """
+    Загрузка табличных данных из CSV файла во внутренее представление.
+    """
+    # переменная для сохранение значение в словаре
+    table = {}
+    # переменнная для сохранение заголовка из ЦСВ файла
+    head_type = {}
+    # начало блока обработки иссключительной ситуации
+    try:
+        # открываем файл для обработки
+        with open(file) as f:
+            # получаем данне в виде словаря разделитель ;
+            reader = csv.DictReader(f, delimiter=';')
+            # получаем название полей
+            list_key = reader.fieldnames
+            # переменная словаря для хранения данных из ЦСВ
+            table['data'] = []
+            # получаем строчки для ЦСВ
+            for row in reader:
+                # ищем первую строку для сохранения заголовка
+                if not head_type:
+                    # тут храниться заголовок
+                    head_type = {}
+                    # перебираем название полей
+                    for key in list_key:
+                        # получаем название поля и пытаемся расспознать его тип по данные из ЦСВ - row[key]
+                        (r, t) = recognize_type(row[key])
+                        # сохраняем название поля и его тип в переменной
+                        head_type[key] = t
+                    # перебрали все и формируем итоговый справочник для дальнейшей обработки
+                    table['head'] = head_type
+                # добавление данные из ЦСВ в справочник для дальнейшей обработки
+                table['data'].append(row)
+    # Обработка иссключительной ситуации при отсутствие файла
+    except FileNotFoundError as err:
+        #  печатаем
+        print(f'ERROR file not FOUND. {err}')
+        # завершаем программу
+        exit()
+    # полученные данные для дальнейшей обработки преобразуем во внутренний формат
+    s_data = serializeed_data(table)
+    # сохраняем во временный файл справочник с данными при следующей обработке будем брать данные из ыременного файла
+    save_picle(s_data)
+
+
+def save_table(file):
+    """
+    Сохранение данных (внутреннее представление) в CSV файл.
+    """
+    # берем из временного файла данные во внутреннем формате
+    data_pkl = load_picle()
+    # преобразуем из внутреннего формат в формат для обработки
+    data = deserializeed_data(data_pkl)
+    # сохраняем во файл данне будут в ЦСВ
+    with open(file, 'w') as f:
+        # подготавливаем справочник для сохранения разделитель ; и определяем заголовок для ЦСВ файла
+        write = csv.DictWriter(f, delimiter=';', fieldnames=list(data['head'].keys()))
+        # пишем в файл все что сформировали на предыдущем операторе это заголовок
+        write.writeheader()
+        # передираем данные из списка построчно
+        for row in data['data']:
+            # пишем строчку с данными в файл
+            write.writerow(row)
+
+def serializeed_data(data):
+    # преобразуем во внутренный формат
+    return pickle.dumps(data)
+
+def deserializeed_data(data_pkl):
+    # преобразуем из внутреннего формата в формат справочника для обработки
+    try:
+        return pickle.loads(data_pkl)
+    # обработка иссключения ошибка типов
+    except TypeError as err:
+        # печать сообщения об ошибке
+        print(f'ERROR: {err}')
+        # завершение программы
+        exit()
+
+def save_picle(object):
+    # сохраниение данных во внутреннем формате в файл
+    with open(data_set, 'wb') as f:
+        pickle.dump(object, f)
+
+def load_picle():
+    # загрузка из фала данных во внутреннем формате
+    # блок обработки иссключений
+    try:
+        # берем данные из временного файла
+        with open(data_set, 'rb') as f:
+            # получение данных из файла
+            data = pickle.load(f)
+    # обработка иссключений при отсутствие файла
+    except FileNotFoundError as err:
+        # печать ошибки
+        print(f'ERROR file not FOUND. {err}')
+        # завершение программы при ошибке
+        exit()
+    # возврат данных из файла
+    return data
+
+def print_table():
+    """
+    вывод таблицы на печать.
+    """
+    # получение данных во внутреннем формате
+    data_pkl = load_picle()
+    # преобразование из внутреннего формата в формат справочника для обработки
+    data = deserializeed_data(data_pkl)
+    # перебираем данне заголовка и типов данных ПЕЧАТАЕМ сначало заголовок
+    for (key, value) in data['head'].items():
+        print(key, value, end=' ')
+    print()
+    # печатаем данные из словаря
+    for data_row in data['data']:
+        # перебираем название столбц и значение
+        for (key, value) in data['head'].items():
+            print(data_row[key], end=' ')
+        print()
+
+def get_rows_by_number(): #start, [stop], copy_table=False):
+    """
+    получение таблицы из одной строки или из строк из интервала по номеру строки.
+    Функция либо копирует исходные данные, либо создает новое представление таблицы, работающее с исходным набором данных (copy_table=False),
+    таким образом изменения, внесенные через это представления будут наблюдаться и в исходной таблице.
+    """
+    pass
+
+def get_rows_by_index(): #val1,  , copy_table=False):
+    """
+     получение новой таблицы из одной строки или из строк со значениями в первом столбце, совпадающими с переданными аргументами val1, … , valN.
+    Функция либо копирует исходные данные, либо создает новое представление таблицы, работающее с исходным набором данных (copy_table=False),
+    таким образом изменения, внесенные через это представления будут наблюдаться и в исходной таблице.
+    """
+    pass
+
+def get_column_types(by_number=True):
+    """
+    получение словаря вида столбец:тип_значений.
+    Тип значения: int, float, bool, str (по умолчанию для всех столбцов).
+    Параметр by_number определяет вид значения столбец – целочисленный индекс столбца или его строковое представление.
+    """
+    pass
+
+def set_column_types(types_dict, by_number=True):
+    """
+    задание словаря вида столбец: тип_значений.
+    Тип значения: int, float, bool, str (по умолчанию для всех столбцов).
+    Параметр by_number определяет вид значения столбец – целочисленный индекс столбца или его строковое представление.
+    """
+    pass
+
+def get_values(column=0):
+    """
+    получение списка значений (типизированных согласно типу столбца) таблицы из столбца либо по номеру столбца
+    (целое число, значение по умолчанию 0, либо по имени столбца)
+    """
+    pass
+
+def get_value(column=0):
+    """
+     получение списка значений (типизированных согласно типу столбца) таблицы из столбца либо по номеру столбца
+    (целое число, значение по умолчанию 0, либо по имени столбца)
+    """
+    pass
+
+def set_values(values=[], column=0):
+    """
+    аналог get_values(column=0) для представления таблицы с одной строкой, возвращает не список,
+    а одно значение (типизированное согласно типу столбца).
+    """
+    # получает данные из временного фйла во внутреннем формате
+    data_pkl = load_picle()
+    # преобразовать из внутреннего формата в формат словаря для обработки
+    data = deserializeed_data(data_pkl)
+    # получаем список заголовков полей из словаря
+    _head = list(data['head'])
+    # получает типы столбцов из словаря
+    _type = list(data['head'].values())
+    _column = 0
+    # проверяем как передаем либо № столбца либо по названию столбца
+    if not isinstance(column, int):
+        # перебираем названия столбцов
+        for name_column in _head:
+            # нашли столбец который должны обработать ищем его номер в списке
+            if column != name_column:
+                _column += 1
             else:
-                result_table = self.table.iloc[start:stop + 1, :]
-            if copy_table:
-                return result_table.copy()
-            else:
-                return result_table
-        except Exception as e:
-            print(f"ошибка при получении строк по номеру: {str(e)}")
-    def get_rows_by_index(self, *values, copy_table=False):
+                break
+    else:
+        # номер столбца если он определен цифрой
+        _column = column
+    # пробегаем по столбцу и меняем на значения из списка
+    for i in range(len(values)):
+        # обработка иссключений
         try:
-            result_table = self.table[self.table.iloc[:, 0].isin(values)]
-            if copy_table:
-                return result_table.copy()
-            else:
-                return result_table
-        except Exception as e:
-            print(f"ошибка при получении строк по индексу: {str(e)}")
-    def get_column_types(self, by_number=True):
-        try:
-            if by_number:
-                columns = self.table.columns
-            else:
-                columns = list(map(str, range(len(self.table.columns))))
-            result_types = {col: self._get_column_type(self.table[col]) for col in columns}
-            return result_types
-        except Exception as e:
-            print(f"ошибка при получении типов столбцов: {str(e)}")
-    def set_column_types(self, types_dict, by_number=True):
-        try:
-            if by_number:
-                columns = self.table.columns
-            else:
-                columns = list(map(str, range(len(self.table.columns))))
-            for col, expected_type in types_dict.items():
-                actual_type = self._get_column_type(self.table[col])
-                if actual_type != expected_type:
-                    raise ValueError(f"неверный тип для столбца {col}")
-            return types_dict
-        except Exception as e:
-            print(f"ошибка при установке типов столбцов: {str(e)}")
-    def get_values(self, column=0):
-        try:
-            return list(self.table.iloc[:, int(column)])
-        except Exception as e:
-            print(f"ошибка при получении значений столбца: {str(e)}")
-    def get_value(self, column=0):
-        try:
-            return self.table.iloc[0, int(column)]
-        except Exception as e:
-            print(f"ошибка при получении значения: {str(e)}")
-    def set_values(self, values, column=0):
-        try:
-            self.table.iloc[:, int(column)] = values
-        except Exception as e:
-            print(f"ошибка при установке значений столбца: {str(e)}")
-    def set_value(self, value, column=0):
-        try:
-            self.table.iloc[0, int(column)] = value
-        except Exception as e:
-            print(f"ошибка при установке значения: {str(e)}")
-    def print_table(self):
-        print(self.table)
-# создаем экземпляр класса
-table_manager = TableManager(attributes=["Name", "Age", "City"], data=[["Alice", 25, "New York"], ["Bob", 30, "Los Angeles"]])
-# сохранение таблицы в CSV
-table_manager.save_table_csv("example.csv")
-# сохранение таблицы в pickle
-table_manager.save_table_pickle("example.pkl")
-# сохранение таблицы в текстовый файл
-table_manager.save_table_text("example.txt")
-# загрузка таблицы из CSV
-print("\nImport from CSV:")
-table_manager.load_table_csv("example.csv")
-table_manager.print_table()
-# загрузка таблицы из pickle
-print("\nImport from pickle:")
-table_manager.load_table_pickle("example.pkl")
-table_manager.print_table()
-# получение строк по номеру
-rows_by_number = table_manager.get_rows_by_number(0, 0)
-print("\nRows by number:")
-print(rows_by_number)
-# получение строк по значениям в первом столбце
-rows_by_index = table_manager.get_rows_by_index("Bob")
-print("\nRows by index:")
-print(rows_by_index)
-# получение типов столбцов
-column_types = table_manager.get_column_types()
-print("\nColumn types:")
-print(column_types)
-# установка типов столбцов
-types_dict = {"Name": "string", "Age": "integer", "City": "string"}
-table_manager.set_column_types(types_dict)
-# получение значений столбца
-col = 1
-values = table_manager.get_values(column=col)
-print(f"\nValues of {col} column:")
-print(values)
-# получение значения из первой строки и столбца
-value = table_manager.get_value(column=1)
-print(f"\nValue of {col} column in the first row:")
-print(value)
-# установка значений столбца
-table_manager.set_values([28, 36], column=1)
-# установка значения в первой строке и столбце
-table_manager.set_value(value=22, column=1)
-# вывод таблицы
-print("\nPrint table:")
-table_manager.print_table()
+            # меняем значения в в определенном столбце
+            data['data'][i][_head[_column]] = _type[_column](values[i])
+        except ValueError as err:
+            print(f'ERROR types for filed. {err}')
+    # преобразуем во внутренний формат
+    data_pkl = serializeed_data(data)
+    # сохраняем во временный формат
+    save_picle(data_pkl)
+
+def set_value(column=0):
+    """
+    задание списка значений values для столбца таблицы (типизированных согласно типу столбца) либо по номеру столбца
+    (целое число, значение по умолчанию 0, либо по имени столбца).
+    """
+    pass
+
+# основная часть программы которая запускаети все обработкт.
+# все что выше можно вынести в отдельный файл и подключать через import
+file = 'test.csv'
+file_new = 'test_new.csv'
+file_pkl = 'test.pkl'
+
+load_table(file)
+print_table()
+
+# меняем данные в столбце
+set_values([11, 12, 13, 14], column='ID')
+
+# тоже пытаемся менять возникает иссключительная ситуация т.к. столбец ID это целое число, а мы передаем сторки
+set_values(['Кочнев Вадим', 'Ульянов Константин', 'Семенов Алексей', 'Петров Дмитрй'], column='ID')
+
+save_table(file_new)
